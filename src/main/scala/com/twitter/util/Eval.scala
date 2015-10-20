@@ -25,8 +25,11 @@ import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory }
 import scala.tools.nsc.reporters.{ Reporter, AbstractReporter }
 import scala.tools.nsc.{ Global, Settings }
+import org.slf4j.LoggerFactory
 
 object Eval {
+  private val log = LoggerFactory.getLogger(classOf[Eval])
+
   case class CompilerException(val messages: Seq[Seq[String]]) extends Exception(
     "Compiler exception " + messages.map(_.mkString("\n")).mkString("\n")
   )
@@ -131,33 +134,43 @@ object Eval {
 class Eval(target: Option[File] = None) {
   import Eval._
 
-  lazy val compilerPath: List[String] = try {
-    classPathOfClass("scala.tools.nsc.Interpreter")
-  } catch {
-    case e: Throwable =>
-      throw new RuntimeException("Unable to load Scala interpreter from classpath (scala-compiler jar is missing?)", e)
+  lazy val compilerPath: List[String] = {
+    val cp = try(classPathOfClass("scala.tools.nsc.Interpreter")) catch {
+      case e: Throwable => throw new RuntimeException("Unable to load Scala interpreter from classpath (scala-compiler jar is missing?)", e)
+    }
+    log.debug("compiler path {}", cp)
+    cp
   }
 
-  lazy val libPath: List[String] = try {
-    classPathOfClass("scala.AnyVal")
-  } catch {
-    case e: Throwable =>
-      throw new RuntimeException("Unable to load scala base object from classpath (scala-library jar is missing?)", e)
+  lazy val libPath: List[String] = {
+    val lp = try(classPathOfClass("scala.AnyVal")) catch {
+      case e: Throwable => throw new RuntimeException("Unable to load scala base object from classpath (scala-library jar is missing?)", e)
+    }
+    log.debug("lib path {}", lp)
+    lp
   }
 
   /*
    * Try to guess our app's classpath.
    * This is probably fragile.
    */
-  lazy val impliedClasspath: List[String] = getClassPath(getClass.getClassLoader).flatten
+  lazy val impliedClassPath: List[String] = {
+    val icp = getClassPath(getClass.getClassLoader).flatten
+    log.debug("implied class path {}", icp)
+    icp
+  }
 
-  lazy val compilerOutputDir = target match {
-    case Some(dir) => AbstractFile.getDirectory(dir)
-    case None => new VirtualDirectory("(memory)", None)
+  lazy val compilerOutputDir = {
+    val cod = target match {
+      case Some(dir) => AbstractFile.getDirectory(dir)
+      case None => new VirtualDirectory("(memory)", None)
+    }
+    log.debug("compiler output dir {}", cod)
+    cod
   }
 
   // For derived classes do customize or override the default compiler settings
-  protected lazy val compilerSettings: Settings = new EvalSettings(compilerPath ::: libPath, impliedClasspath, compilerOutputDir)
+  protected lazy val compilerSettings: Settings = new EvalSettings(compilerPath ::: libPath, impliedClassPath, compilerOutputDir)
 
   // For derived classes to provide an alternate compiler message handler.
   protected lazy val reporter: Reporter = new DefaultReporter(codeWrapperLineOffset, compilerSettings)
@@ -183,7 +196,14 @@ class Eval(target: Option[File] = None) {
   }
 
   private def apply[T](code: String, className: String): T = {
-    compiler(wrapCodeInClass(code, className))
+    val wrapped = wrapCodeInClass(code, className)
+    if (log.isDebugEnabled) {
+      log.debug("wrapped code:")
+      wrapped.lines.zipWithIndex.foreach{ case (line, i) =>
+        log.debug(s"""${i.toString.padTo(5, ' ')}| ${line}""")
+      }
+    }
+    compiler.apply(wrapped)
     classLoader.loadClass(className).getConstructor().newInstance().asInstanceOf[() => Any].apply().asInstanceOf[T]
   }
 
@@ -193,10 +213,10 @@ class Eval(target: Option[File] = None) {
    */
   private def wrapCodeInClass(code: String, className: String) =
     s"""class ${className} extends (() => Any) {
-          def apply() = {
-           ${code}
-         }
-       }"""
+       |  def apply() = {
+       |    ${code}
+       |  }
+       |}""".stripMargin
 
   /*
    * Defines the number of code lines that proceed evaluated code.

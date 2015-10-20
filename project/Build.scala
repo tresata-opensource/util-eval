@@ -13,7 +13,9 @@ object ProjectBuild extends Build {
       scalaVersion := "2.11.7",
       libraryDependencies <++= (scalaVersion) { scalaVersion => Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion % "compile",
-        "org.scalatest" %% "scalatest" % "2.2.5" % "test"
+        "org.slf4j" % "slf4j-api" % "1.7.5" % "compile",
+        "org.scalatest" %% "scalatest" % "2.2.5" % "test",
+        "org.slf4j" % "slf4j-log4j12" % "1.7.5" % "test"
       )},
       publishMavenStyle := true,
       pomIncludeRepository := { x => false },
