@@ -27,9 +27,75 @@ import scala.tools.nsc.reporters.{ Reporter, AbstractReporter }
 import scala.tools.nsc.{ Global, Settings }
 
 object Eval {
-  case class CompilerException(val messages: List[List[String]]) extends Exception(
+  case class CompilerException(val messages: Seq[Seq[String]]) extends Exception(
     "Compiler exception " + messages.map(_.mkString("\n")).mkString("\n")
   )
+
+  trait MessageCollector {
+    def messages: Seq[Seq[String]]
+  }
+
+  private class DefaultCollector(lineOffset: Int, val settings: Settings) extends AbstractReporter with MessageCollector {
+    private val messageBuffer = new mutable.ListBuffer[List[String]]
+
+    override def messages: Seq[Seq[String]] = messageBuffer.toList
+
+    override def display(pos: Position, message: String, severity: Severity): Unit = {
+      severity.count += 1
+      val severityName = severity match {
+        case ERROR   => "error: "
+        case WARNING => "warning: "
+        case _ => ""
+      }
+      // the line number is not always available
+      val lineMessage =
+        try {
+          "line " + (pos.line - lineOffset)
+        } catch {
+          case _: Throwable => ""
+        }
+      messageBuffer += s"${severityName}${lineMessage}: ${message}" ::
+      (if (pos.isDefined) {
+        pos.inUltimateSource(pos.source).lineContent.stripLineEnd ::
+        (" " * (pos.column - 1) + "^") ::
+        Nil
+      } else {
+        Nil
+      })
+    }
+
+    override def displayPrompt: Unit = {
+      // no.
+    }
+  }
+
+  /**
+   * Dynamic scala compiler. Lots of (slow) state is created, so it may be advantageous to keep
+   * around one of these and reuse it.
+   */
+  private class StringCompiler(lineOffset: Int, settings: Settings, messageHandler: Option[Reporter]) {
+    val reporter = messageHandler.getOrElse(new DefaultCollector(lineOffset, settings))
+    val global = new Global(settings, reporter)
+
+    /**
+     * Compile scala code.
+     */
+    def apply(code: String) {
+      // if you're looking for the performance hit, it's 1/2 this line...
+      val compiler = new global.Run
+      val sourceFiles = List(new BatchSourceFile("(inline)", code))
+      // ...and 1/2 this line:
+      compiler.compileSources(sourceFiles)
+
+      if (reporter.hasErrors || reporter.WARNING.count > 0) {
+        val msgs: Seq[Seq[String]] = reporter match {
+          case collector: MessageCollector => collector.messages
+          case _ => List(List(reporter.toString))
+        }
+        throw new CompilerException(msgs)
+      }
+    }
+  }
 }
 
 /**
@@ -66,10 +132,15 @@ class Eval(target: Option[File] = None) {
   protected lazy val compilerMessageHandler: Option[Reporter] = None
 
   // For derived classes do customize or override the default compiler settings.
-  protected lazy val compilerSettings: Settings = new EvalSettings(target)
+  protected lazy val compilerSettings: Settings = new EvalSettings
+
+  lazy val compilerOutputDir = target match {
+    case Some(dir) => AbstractFile.getDirectory(dir)
+    case None => new VirtualDirectory("(memory)", None)
+  }
 
   // Primary encapsulation around native Scala compiler
-  private[this] lazy val compiler = new StringCompiler(codeWrapperLineOffset, target, compilerSettings, compilerMessageHandler)
+  private[this] lazy val compiler = new StringCompiler(codeWrapperLineOffset, compilerSettings, compilerMessageHandler)
 
   /**
    * val i: Int = new Eval()("1 + 1") // => 2
@@ -130,8 +201,7 @@ class Eval(target: Option[File] = None) {
   lazy val impliedClassPath: List[String] = {
     def getClassPath(cl: ClassLoader, acc: List[List[String]] = List.empty): List[List[String]] = {
       val cp = cl match {
-        case urlClassLoader: URLClassLoader => urlClassLoader.getURLs.filter(_.getProtocol == "file").
-          map(u => new File(u.toURI).getPath).toList
+        case urlClassLoader: URLClassLoader => urlClassLoader.getURLs.filter(_.getProtocol == "file").map(u => new File(u.toURI).getPath).toList
         case _ => Nil
       }
       cl.getParent match {
@@ -143,90 +213,16 @@ class Eval(target: Option[File] = None) {
     getClassPath(getClass.getClassLoader).flatten
   }
 
-  lazy val compilerOutputDir = target match {
-    case Some(dir) => AbstractFile.getDirectory(dir)
-    case None => new VirtualDirectory("(memory)", None)
-  }
-
   /*
    * Class loader for finding classes compiled by this StringCompiler.
    */
   private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, getClass.getClassLoader)
 
-  class EvalSettings(targetDir: Option[File]) extends Settings {
+  class EvalSettings extends Settings {
     nowarnings.value = true // warnings are exceptions, so disable
     outputDirs.setSingleOutput(compilerOutputDir)
     private[this] val pathList = compilerPath ::: libPath
     bootclasspath.value = pathList.mkString(File.pathSeparator)
     classpath.value = (pathList ::: impliedClassPath).mkString(File.pathSeparator)
-  }
-
-  /**
-   * Dynamic scala compiler. Lots of (slow) state is created, so it may be advantageous to keep
-   * around one of these and reuse it.
-   */
-  private class StringCompiler(lineOffset: Int, targetDir: Option[File], settings: Settings, messageHandler: Option[Reporter]) { self =>
-
-    val target = compilerOutputDir
-
-    trait MessageCollector {
-      val messages: Seq[List[String]]
-    }
-
-    val reporter = messageHandler getOrElse new AbstractReporter with MessageCollector {
-      val settings = self.settings
-      val messages = new mutable.ListBuffer[List[String]]
-
-      override def display(pos: Position, message: String, severity: Severity) {
-        severity.count += 1
-        val severityName = severity match {
-          case ERROR   => "error: "
-          case WARNING => "warning: "
-          case _ => ""
-        }
-        // the line number is not always available
-        val lineMessage =
-          try {
-            "line " + (pos.line - lineOffset)
-          } catch {
-            case _: Throwable => ""
-          }
-        messages += (severityName + lineMessage + ": " + message) ::
-          (if (pos.isDefined) {
-            pos.inUltimateSource(pos.source).lineContent.stripLineEnd ::
-              (" " * (pos.column - 1) + "^") ::
-              Nil
-          } else {
-            Nil
-          })
-      }
-
-      override def displayPrompt: Unit = {
-        // no.
-      }
-    }
-
-    val global = new Global(settings, reporter)
-
-    /**
-     * Compile scala code. It can be found using the above class loader.
-     */
-    def apply(code: String) {
-      // if you're looking for the performance hit, it's 1/2 this line...
-      val compiler = new global.Run
-      val sourceFiles = List(new BatchSourceFile("(inline)", code))
-      // ...and 1/2 this line:
-      compiler.compileSources(sourceFiles)
-
-      if (reporter.hasErrors || reporter.WARNING.count > 0) {
-        val msgs: List[List[String]] = reporter match {
-          case collector: MessageCollector =>
-            collector.messages.toList
-          case _ =>
-            List(List(reporter.toString))
-        }
-        throw new CompilerException(msgs)
-      }
-    }
   }
 }
