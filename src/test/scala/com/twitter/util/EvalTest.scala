@@ -17,13 +17,13 @@ class EvalTest extends WordSpec {
         val eval = new Eval() {
           @volatile var errors: Seq[(String, String)] = Nil
 
-          override lazy val compilerMessageHandler: Option[Reporter] = Some(new AbstractReporter {
+          override lazy val reporter: Reporter = new AbstractReporter {
             override val settings: Settings = compilerSettings
             override def displayPrompt(): Unit = ()
             override def display(pos: Position, msg: String, severity: this.type#Severity): Unit = {
               errors = errors :+ ((msg, severity.toString))
             }
-          })
+          }
         }
       }
 

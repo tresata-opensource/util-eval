@@ -73,8 +73,7 @@ object Eval {
    * Dynamic scala compiler. Lots of (slow) state is created, so it may be advantageous to keep
    * around one of these and reuse it.
    */
-  private class StringCompiler(lineOffset: Int, settings: Settings, messageHandler: Option[Reporter]) {
-    val reporter = messageHandler.getOrElse(new DefaultReporter(lineOffset, settings))
+  private class StringCompiler(lineOffset: Int, settings: Settings, reporter: Reporter) {
     val global = new Global(settings, reporter)
 
     /**
@@ -128,11 +127,11 @@ class Eval(target: Option[File] = None) {
       throw new RuntimeException("Unable to load scala base object from classpath (scala-library jar is missing?)", e)
   }
 
-  // For derived classes to provide an alternate compiler message handler.
-  protected lazy val compilerMessageHandler: Option[Reporter] = None
-
   // For derived classes do customize or override the default compiler settings.
   protected lazy val compilerSettings: Settings = new EvalSettings
+
+  // For derived classes to provide an alternate compiler message handler.
+  protected lazy val reporter: Reporter = new DefaultReporter(codeWrapperLineOffset, compilerSettings)
 
   lazy val compilerOutputDir = target match {
     case Some(dir) => AbstractFile.getDirectory(dir)
@@ -140,7 +139,7 @@ class Eval(target: Option[File] = None) {
   }
 
   // Primary encapsulation around native Scala compiler
-  private[this] lazy val compiler = new StringCompiler(codeWrapperLineOffset, compilerSettings, compilerMessageHandler)
+  private[this] lazy val compiler = new StringCompiler(codeWrapperLineOffset, compilerSettings, reporter)
 
   /**
    * val i: Int = new Eval()("1 + 1") // => 2
