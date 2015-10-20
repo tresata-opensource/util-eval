@@ -35,7 +35,7 @@ object Eval {
     def messages: Seq[Seq[String]]
   }
 
-  private class DefaultReporter(lineOffset: Int, val settings: Settings) extends AbstractReporter with MessageCollector {
+  class DefaultReporter(lineOffset: Int, val settings: Settings) extends AbstractReporter with MessageCollector {
     private val messageBuffer = new mutable.ListBuffer[List[String]]
 
     override def messages: Seq[Seq[String]] = messageBuffer.toList
@@ -73,7 +73,7 @@ object Eval {
    * Dynamic scala compiler. Lots of (slow) state is created, so it may be advantageous to keep
    * around one of these and reuse it.
    */
-  private class StringCompiler(lineOffset: Int, settings: Settings, reporter: Reporter) {
+  private class StringCompiler(settings: Settings, reporter: Reporter) {
     val global = new Global(settings, reporter)
 
     /**
@@ -87,13 +87,31 @@ object Eval {
       compiler.compileSources(sourceFiles)
 
       if (reporter.hasErrors || reporter.WARNING.count > 0) {
-        val msgs: Seq[Seq[String]] = reporter match {
+        val messages = reporter match {
           case collector: MessageCollector => collector.messages
           case _ => List(List(reporter.toString))
         }
-        throw new CompilerException(msgs)
+        throw new CompilerException(messages)
       }
     }
+  }
+
+  private def getClassPath(cl: ClassLoader, acc: List[List[String]] = List.empty): List[List[String]] = {
+    val cp = cl match {
+      case urlClassLoader: URLClassLoader => urlClassLoader.getURLs.filter(_.getProtocol == "file").map(u => new File(u.toURI).getPath).toList
+      case _ => Nil
+    }
+    cl.getParent match {
+      case null => (cp :: acc).reverse
+      case parent => getClassPath(parent, cp :: acc)
+    }
+  }
+
+  class EvalSettings(bootClassPath: List[String], impliedClassPath: List[String], compilerOutputDir: AbstractFile) extends Settings {
+    nowarnings.value = true // warnings are exceptions, so disable
+    outputDirs.setSingleOutput(compilerOutputDir)
+    bootclasspath.value = bootClassPath.mkString(File.pathSeparator)
+    classpath.value = (bootClassPath ::: impliedClassPath).mkString(File.pathSeparator)
   }
 }
 
@@ -113,40 +131,50 @@ object Eval {
 class Eval(target: Option[File] = None) {
   import Eval._
 
-  private lazy val compilerPath = try {
+  lazy val compilerPath: List[String] = try {
     classPathOfClass("scala.tools.nsc.Interpreter")
   } catch {
     case e: Throwable =>
       throw new RuntimeException("Unable to load Scala interpreter from classpath (scala-compiler jar is missing?)", e)
   }
 
-  private lazy val libPath = try {
+  lazy val libPath: List[String] = try {
     classPathOfClass("scala.AnyVal")
   } catch {
     case e: Throwable =>
       throw new RuntimeException("Unable to load scala base object from classpath (scala-library jar is missing?)", e)
   }
 
-  // For derived classes do customize or override the default compiler settings.
-  protected lazy val compilerSettings: Settings = new EvalSettings
-
-  // For derived classes to provide an alternate compiler message handler.
-  protected lazy val reporter: Reporter = new DefaultReporter(codeWrapperLineOffset, compilerSettings)
+  /*
+   * Try to guess our app's classpath.
+   * This is probably fragile.
+   */
+  lazy val impliedClasspath: List[String] = getClassPath(getClass.getClassLoader).flatten
 
   lazy val compilerOutputDir = target match {
     case Some(dir) => AbstractFile.getDirectory(dir)
     case None => new VirtualDirectory("(memory)", None)
   }
 
+  // For derived classes do customize or override the default compiler settings
+  protected lazy val compilerSettings: Settings = new EvalSettings(compilerPath ::: libPath, impliedClasspath, compilerOutputDir)
+
+  // For derived classes to provide an alternate compiler message handler.
+  protected lazy val reporter: Reporter = new DefaultReporter(codeWrapperLineOffset, compilerSettings)
+
+
   // Primary encapsulation around native Scala compiler
-  private[this] lazy val compiler = new StringCompiler(codeWrapperLineOffset, compilerSettings, reporter)
+  private[this] lazy val compiler = new StringCompiler(compilerSettings, reporter)
+
+  /*
+   * Class loader for finding classes compiled by this StringCompiler.
+   */
+  private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, getClass.getClassLoader)
 
   /**
    * val i: Int = new Eval()("1 + 1") // => 2
    *
-   * Will generate a classname of the form Evaluater__<unique>,
-   * where unique is computed from the jvmID (a random number)
-   * and a digest of code
+   * Will generate a classname of the form Evaluater__<uuid>
    */
   def apply[T](code: String): T = {
     val id = UUID.randomUUID().toString.take(20).filter(_ != '-')
@@ -191,37 +219,5 @@ class Eval(target: Option[File] = None) {
       require(path.endsWith(resource))
       List(path.substring(0, path.length - resource.length + 1))
     }
-  }
-
-  /*
-   * Try to guess our app's classpath.
-   * This is probably fragile.
-   */
-  lazy val impliedClassPath: List[String] = {
-    def getClassPath(cl: ClassLoader, acc: List[List[String]] = List.empty): List[List[String]] = {
-      val cp = cl match {
-        case urlClassLoader: URLClassLoader => urlClassLoader.getURLs.filter(_.getProtocol == "file").map(u => new File(u.toURI).getPath).toList
-        case _ => Nil
-      }
-      cl.getParent match {
-        case null => (cp :: acc).reverse
-        case parent => getClassPath(parent, cp :: acc)
-      }
-    }
-
-    getClassPath(getClass.getClassLoader).flatten
-  }
-
-  /*
-   * Class loader for finding classes compiled by this StringCompiler.
-   */
-  private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, getClass.getClassLoader)
-
-  class EvalSettings extends Settings {
-    nowarnings.value = true // warnings are exceptions, so disable
-    outputDirs.setSingleOutput(compilerOutputDir)
-    private val pathList = compilerPath ::: libPath
-    bootclasspath.value = pathList.mkString(File.pathSeparator)
-    classpath.value = (pathList ::: impliedClassPath).mkString(File.pathSeparator)
   }
 }
