@@ -35,7 +35,7 @@ object Eval {
     def messages: Seq[Seq[String]]
   }
 
-  private class DefaultCollector(lineOffset: Int, val settings: Settings) extends AbstractReporter with MessageCollector {
+  private class DefaultReporter(lineOffset: Int, val settings: Settings) extends AbstractReporter with MessageCollector {
     private val messageBuffer = new mutable.ListBuffer[List[String]]
 
     override def messages: Seq[Seq[String]] = messageBuffer.toList
@@ -50,11 +50,11 @@ object Eval {
       // the line number is not always available
       val lineMessage =
         try {
-          "line " + (pos.line - lineOffset)
+          s"line ${pos.line - lineOffset}: "
         } catch {
           case _: Throwable => ""
         }
-      messageBuffer += s"${severityName}${lineMessage}: ${message}" ::
+      messageBuffer += s"${severityName}${lineMessage}${message}" ::
       (if (pos.isDefined) {
         pos.inUltimateSource(pos.source).lineContent.stripLineEnd ::
         (" " * (pos.column - 1) + "^") ::
@@ -65,7 +65,7 @@ object Eval {
     }
 
     override def displayPrompt: Unit = {
-      // no.
+      // no
     }
   }
 
@@ -74,7 +74,7 @@ object Eval {
    * around one of these and reuse it.
    */
   private class StringCompiler(lineOffset: Int, settings: Settings, messageHandler: Option[Reporter]) {
-    val reporter = messageHandler.getOrElse(new DefaultCollector(lineOffset, settings))
+    val reporter = messageHandler.getOrElse(new DefaultReporter(lineOffset, settings))
     val global = new Global(settings, reporter)
 
     /**
@@ -221,7 +221,7 @@ class Eval(target: Option[File] = None) {
   class EvalSettings extends Settings {
     nowarnings.value = true // warnings are exceptions, so disable
     outputDirs.setSingleOutput(compilerOutputDir)
-    private[this] val pathList = compilerPath ::: libPath
+    private val pathList = compilerPath ::: libPath
     bootclasspath.value = pathList.mkString(File.pathSeparator)
     classpath.value = (pathList ::: impliedClassPath).mkString(File.pathSeparator)
   }
