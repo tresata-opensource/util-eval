@@ -208,25 +208,10 @@ class Eval(target: Option[File] = None) {
 
     val global = new Global(settings, reporter)
 
-    def debugEnabled: Boolean = System.getProperty("eval.debug") != null
-
-    def debugPrintWithLineNumbers(code: String): Unit = {
-      printf("Code follows (%d bytes)\n", code.length)
-
-      var numLines = 0
-      code.lines foreach { line: String =>
-        numLines += 1
-        println(numLines.toString.padTo(5, ' ') + "| " + line)
-      }
-    }
-
     /**
      * Compile scala code. It can be found using the above class loader.
      */
     def apply(code: String) {
-      if (debugEnabled)
-        debugPrintWithLineNumbers(code)
-
       // if you're looking for the performance hit, it's 1/2 this line...
       val compiler = new global.Run
       val sourceFiles = List(new BatchSourceFile("(inline)", code))
