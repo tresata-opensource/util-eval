@@ -80,12 +80,12 @@ class Eval(target: Option[File] = None) {
    */
   def apply[T](code: String): T = {
     val id = UUID.randomUUID().toString.take(20).filter(_ != '-')
-    val className = "Evaluator__" + id
+    val className = "Eval__" + id
     apply(code, className)
   }
 
   private def apply[T](code: String, className: String): T = {
-    compiler(wrapCodeInClass(className, code))
+    compiler(wrapCodeInClass(code, className))
     classLoader.loadClass(className).getConstructor().newInstance().asInstanceOf[() => Any].apply().asInstanceOf[T]
   }
 
@@ -93,7 +93,7 @@ class Eval(target: Option[File] = None) {
    * Wraps source code in a new class with an apply method.
    * NB: If this method is changed, make sure `codeWrapperLineOffset` is correct.
    */
-  private def wrapCodeInClass(className: String, code: String) =
+  private def wrapCodeInClass(code: String, className: String) =
     s"""class ${className} extends (() => Any) {
           def apply() = {
            ${code}
@@ -140,7 +140,7 @@ class Eval(target: Option[File] = None) {
       }
     }
 
-    getClassPath(this.getClass.getClassLoader).flatten
+    getClassPath(getClass.getClassLoader).flatten
   }
 
   lazy val compilerOutputDir = target match {
@@ -151,7 +151,7 @@ class Eval(target: Option[File] = None) {
   /*
    * Class loader for finding classes compiled by this StringCompiler.
    */
-  private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, this.getClass.getClassLoader)
+  private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, getClass.getClassLoader)
 
   class EvalSettings(targetDir: Option[File]) extends Settings {
     nowarnings.value = true // warnings are exceptions, so disable
@@ -165,7 +165,7 @@ class Eval(target: Option[File] = None) {
    * Dynamic scala compiler. Lots of (slow) state is created, so it may be advantageous to keep
    * around one of these and reuse it.
    */
-  private class StringCompiler(lineOffset: Int, targetDir: Option[File], settings: Settings, messageHandler: Option[Reporter]) {
+  private class StringCompiler(lineOffset: Int, targetDir: Option[File], settings: Settings, messageHandler: Option[Reporter]) { self =>
 
     val target = compilerOutputDir
 
@@ -174,7 +174,7 @@ class Eval(target: Option[File] = None) {
     }
 
     val reporter = messageHandler getOrElse new AbstractReporter with MessageCollector {
-      val settings = StringCompiler.this.settings
+      val settings = self.settings
       val messages = new mutable.ListBuffer[List[String]]
 
       override def display(pos: Position, message: String, severity: Severity) {
