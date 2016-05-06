@@ -1,16 +1,15 @@
 import sbt._
 import sbt.Keys._
-import net.virtualvoid.sbt.graph.Plugin._
 
 object ProjectBuild extends Build {
   lazy val project = Project(
     id = "root",
     base = file("."),
-    settings = Project.defaultSettings ++ graphSettings ++ Seq(
+    settings = Project.defaultSettings ++ Seq(
       organization := "com.twitter",
       name := "util-eval",
-      version := "6.30.0-tres1",
-      scalaVersion := "2.11.7",
+      version := "6.30.0-tres2-SNAPSHOT",
+      scalaVersion := "2.11.8",
       libraryDependencies <++= (scalaVersion) { scalaVersion => Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion % "compile",
         "org.slf4j" % "slf4j-api" % "1.7.5" % "compile",
