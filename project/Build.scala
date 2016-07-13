@@ -8,7 +8,7 @@ object ProjectBuild extends Build {
     settings = Project.defaultSettings ++ Seq(
       organization := "com.twitter",
       name := "util-eval",
-      version := "6.30.0-tres2-SNAPSHOT",
+      version := "6.30.0-tres2",
       scalaVersion := "2.11.8",
       libraryDependencies <++= (scalaVersion) { scalaVersion => Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion % "compile",
