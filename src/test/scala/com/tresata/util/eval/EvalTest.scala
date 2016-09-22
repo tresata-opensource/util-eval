@@ -1,4 +1,4 @@
-package com.twitter.util
+package com.tresata.util.eval
 
 import org.scalatest.WordSpec
 import scala.reflect.internal.util.Position

@@ -1,5 +1,6 @@
 /*
  * Copyright 2010 Twitter, Inc.
+ * Copyright 2016 Tresata, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -14,7 +15,8 @@
  * limitations under the License.
  */
 
-package com.twitter.util
+// this is a fork of twitter's util-eval moved into a new package to avoid name clashes
+package com.tresata.util.eval
 
 import java.util.UUID
 import java.io.File

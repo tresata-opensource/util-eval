@@ -6,9 +6,9 @@ object ProjectBuild extends Build {
     id = "root",
     base = file("."),
     settings = Project.defaultSettings ++ Seq(
-      organization := "com.twitter",
+      organization := "com.tresata",
       name := "util-eval",
-      version := "6.30.0-tres3-SNAPSHOT",
+      version := "1.0.0-SNAPSHOT",
       scalaVersion := "2.11.8",
       libraryDependencies <++= (scalaVersion) { scalaVersion => Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion % "compile",
