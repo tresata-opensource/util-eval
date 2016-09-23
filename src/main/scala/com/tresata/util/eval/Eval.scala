@@ -197,8 +197,8 @@ class Eval(target: Option[File] = None) {
     apply(code, className)
   }
 
-  private def apply[T](code: String, className: String): T = {
-    val wrapped = wrapCodeInClass(code, className)
+  private def apply[T](code: String, objectName: String): T = {
+    val wrapped = wrapCodeInObject(code, objectName)
     if (log.isDebugEnabled) {
       log.debug("wrapped code:")
       wrapped.lines.zipWithIndex.foreach{ case (line, i) =>
@@ -206,15 +206,20 @@ class Eval(target: Option[File] = None) {
       }
     }
     compiler.apply(wrapped)
-    classLoader.loadClass(className).getConstructor().newInstance().asInstanceOf[() => Any].apply().asInstanceOf[T]
+    import scala.reflect.runtime.universe
+    val runtimeMirror = universe.runtimeMirror(classLoader)
+    val module = runtimeMirror.staticModule(objectName)
+    val obj = runtimeMirror.reflectModule(module)
+    val f: () => T = obj.instance.asInstanceOf[() => T]
+    f()
   }
-
+  
   /*
    * Wraps source code in a new class with an apply method.
    * NB: If this method is changed, make sure `codeWrapperLineOffset` is correct.
    */
-  private def wrapCodeInClass(code: String, className: String) =
-    s"""class ${className} extends (() => Any) with java.io.Serializable {
+  private def wrapCodeInObject(code: String, objectName: String) =
+    s"""object ${objectName} extends (() => Any) with java.io.Serializable {
        |  def apply() = {
        |    ${code}
        |  }
@@ -223,7 +228,7 @@ class Eval(target: Option[File] = None) {
   /*
    * Defines the number of code lines that proceed evaluated code.
    * Used to ensure compile error messages report line numbers aligned with user's code.
-   * NB: If `wrapCodeInClass(String,String)` is changed, make sure this remains correct.
+   * NB: If `wrapCodeInObject(String,String)` is changed, make sure this remains correct.
    */
   private val codeWrapperLineOffset = 2
 
