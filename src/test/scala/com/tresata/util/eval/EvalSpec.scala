@@ -1,11 +1,12 @@
 package com.tresata.util.eval
 
+import java.io.File
 import org.scalatest.WordSpec
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.{AbstractReporter, Reporter}
 
-class EvalTest extends WordSpec {
+class EvalSpec extends WordSpec {
   "Evaluator" should {
 
     "apply('expression')" in {
@@ -43,6 +44,13 @@ class EvalTest extends WordSpec {
           eval[Int]("val a = 3; val b = q; a + b")
         }
         assert(eval.errors.nonEmpty)
+      }
+
+      "support include statements" in {
+        assert((new Eval(preprocessors = Seq(IncludePreprocessor(Seq(FilesystemResolver(new File("test/data"))))))).apply[Int]("""
+          #include test.scala
+          x + 1
+        """) == 2)
       }
     }
   }

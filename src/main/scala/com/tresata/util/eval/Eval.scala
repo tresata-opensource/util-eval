@@ -16,6 +16,7 @@
  */
 
 // this is a fork of twitter's util-eval moved into a new package to avoid name clashes
+
 package com.tresata.util.eval
 
 import java.util.UUID
@@ -133,7 +134,7 @@ object Eval {
  * - compile the class
  * - contruct an instance of that class
  */
-class Eval(target: Option[File] = None) {
+class Eval(target: Option[File] = None, preprocessors: Seq[Preprocessor] = Seq.empty) {
   import Eval._
 
   lazy val compilerPath: List[String] = {
@@ -198,7 +199,8 @@ class Eval(target: Option[File] = None) {
   }
 
   private def apply[T](code: String, objectName: String): T = {
-    val wrapped = wrapCodeInObject(code, objectName)
+    val preprocessed = preprocessors.foldLeft(code){ (acc, p) => p(acc) }
+    val wrapped = wrapCodeInObject(preprocessed, objectName)
     if (log.isDebugEnabled) {
       log.debug("wrapped code:")
       wrapped.lines.zipWithIndex.foreach{ case (line, i) =>
@@ -213,7 +215,7 @@ class Eval(target: Option[File] = None) {
     val f: () => T = obj.instance.asInstanceOf[() => T]
     f()
   }
-  
+
   /*
    * Wraps source code in a new class with an apply method.
    * NB: If this method is changed, make sure `codeWrapperLineOffset` is correct.
