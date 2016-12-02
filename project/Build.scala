@@ -8,7 +8,7 @@ object ProjectBuild extends Build {
     settings = Project.defaultSettings ++ Seq(
       organization := "com.tresata",
       name := "util-eval",
-      version := "1.0.0",
+      version := "1.1.0-SNAPSHOT",
       scalaVersion := "2.11.8",
       libraryDependencies <++= (scalaVersion) { scalaVersion => Seq(
         "org.scala-lang" % "scala-compiler" % scalaVersion % "compile",
