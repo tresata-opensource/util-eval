@@ -6,7 +6,7 @@ lazy val root = (project in file(".")).settings(
   libraryDependencies := Seq(
     "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
     "org.slf4j" % "slf4j-api" % "1.7.5" % "compile",
-    "org.scalatest" %% "scalatest" % "2.2.5" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.3" % "test",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5" % "test"
   ),
   publishMavenStyle := true,
