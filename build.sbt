@@ -6,7 +6,7 @@ lazy val root = (project in file(".")).settings(
   libraryDependencies := Seq(
     "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
     "org.slf4j" % "slf4j-api" % "1.7.5" % "compile",
-    "org.scalatest" %% "scalatest" % "3.0.3" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.4" % "test",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5" % "test"
   ),
   publishMavenStyle := true,
@@ -14,11 +14,9 @@ lazy val root = (project in file(".")).settings(
   publishArtifact in Test := false,
   publishTo := {
     if (version.value.trim.endsWith("SNAPSHOT"))
-      Some("tresata-snapshots" at "http://server02:8080/repository/snapshots")
+      Some("tresata-snapshots" at "http://server02.tresata.com:8081/artifactory/oss-libs-snapshot-local")
     else
-      Some("tresata-releases"  at "http://server02:8080/repository/internal")
+      Some("tresata-releases"  at "http://server02.tresata.com:8081/artifactory/oss-libs-release-local")
   },
-  credentials += Credentials(Path.userHome / ".m2" / "credentials_internal"),
-  credentials += Credentials(Path.userHome / ".m2" / "credentials_snapshots"),
-  credentials += Credentials(Path.userHome / ".m2" / "credentials_proxy")
+  credentials += Credentials(Path.userHome / ".m2" / "credentials_artifactory")
 )
