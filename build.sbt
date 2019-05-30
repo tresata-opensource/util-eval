@@ -2,12 +2,12 @@ lazy val root = (project in file(".")).settings(
   organization := "com.tresata",
   name := "util-eval",
   version := "1.2.0-SNAPSHOT",
-  scalaVersion := "2.11.12",
-  crossScalaVersions := Seq("2.11.12", "2.12.7"),
+  scalaVersion := "2.12.8",
+  crossScalaVersions := Seq("2.11.12", "2.12.8"),
   libraryDependencies := Seq(
     "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
     "org.slf4j" % "slf4j-api" % "1.7.5" % "compile",
-    "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.7" % "test",
     "org.slf4j" % "slf4j-log4j12" % "1.7.5" % "test"
   ),
   licenses += "Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt"),
