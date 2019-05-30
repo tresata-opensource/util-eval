@@ -23,7 +23,7 @@ import java.util.UUID
 import java.io.File
 import java.net.URLClassLoader
 import scala.collection.mutable
-import scala.reflect.internal.util.{ BatchSourceFile, Position }
+import scala.reflect.internal.util.{ SourceFile, BatchSourceFile, Position }
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory }
 import scala.tools.nsc.reporters.{ Reporter, AbstractReporter }
@@ -79,18 +79,17 @@ object Eval {
    * Dynamic scala compiler. Lots of (slow) state is created, so it may be advantageous to keep
    * around one of these and reuse it.
    */
-  private class StringCompiler(settings: Settings, reporter: Reporter) {
+  private class DynamicCompiler(settings: Settings, reporter: Reporter) {
     val global = new Global(settings, reporter)
 
     /**
      * Compile scala code.
      */
-    def apply(code: String) {
+    private def apply(code: List[SourceFile]): Unit = {
       // if you're looking for the performance hit, it's 1/2 this line...
       val compiler = new global.Run
-      val sourceFiles = List(new BatchSourceFile("(inline)", code))
       // ...and 1/2 this line:
-      compiler.compileSources(sourceFiles)
+      compiler.compileSources(code)
 
       if (reporter.hasErrors || reporter.WARNING.count > 0) {
         val messages = reporter match {
@@ -99,6 +98,19 @@ object Eval {
         }
         throw new CompilerException(messages)
       }
+    }
+
+    /**
+     * Compile scala code.
+     */
+    def apply(code: String): Unit = {
+      val sourceFiles = List(new BatchSourceFile("(inline)", code))
+      apply(sourceFiles)
+    }
+
+    def apply(code: Seq[File]): Unit = {
+      val sourceFiles = code.map{ file => new BatchSourceFile(AbstractFile.getFile(file)) }.toList
+      apply(sourceFiles)
     }
   }
 
@@ -180,15 +192,20 @@ class Eval(target: Option[File] = None, preprocessors: Seq[Preprocessor] = Seq.e
 
 
   // Primary encapsulation around native Scala compiler
-  private[this] lazy val compiler = new StringCompiler(compilerSettings, reporter)
+  private[this] lazy val compiler = new DynamicCompiler(compilerSettings, reporter)
 
   /*
-   * Class loader for finding classes compiled by this StringCompiler.
+   * Class loader for finding classes compiled by this DynamicCompiler.
    */
   private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, getClass.getClassLoader)
 
   /**
-    * Simply compile code to class files without code wrapping.
+    * Compile code to class files without code wrapping.
+    */
+  def compile(code: Seq[File]): Unit = compiler.apply(code)
+
+  /**
+    * Compile code to class files without code wrapping.
     */
   def compile(code: String): Unit = compiler.apply(code)
 
