@@ -188,6 +188,11 @@ class Eval(target: Option[File] = None, preprocessors: Seq[Preprocessor] = Seq.e
   private lazy val classLoader = new AbstractFileClassLoader(compilerOutputDir, getClass.getClassLoader)
 
   /**
+    * Simply compile code to class files without code wrapping.
+    */
+  def compile(code: String): Unit = compiler.apply(code)
+
+  /**
    * val i: Int = new Eval()("1 + 1") // => 2
    *
    * Will generate a classname of the form Evaluater__<uuid>
