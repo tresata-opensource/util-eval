@@ -1,7 +1,7 @@
 lazy val root = (project in file(".")).settings(
   organization := "com.tresata",
   name := "util-eval",
-  version := "1.2.0",
+  version := "1.3.0-SNAPSHOT",
   scalaVersion := "2.12.10",
   crossScalaVersions := Seq("2.11.12", "2.12.10"),
   libraryDependencies := Seq(
