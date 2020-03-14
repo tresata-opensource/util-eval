@@ -91,12 +91,14 @@ object Eval {
       // ...and 1/2 this line:
       compiler.compileSources(code)
 
-      if (reporter.hasErrors || reporter.WARNING.count > 0) {
-        val messages = reporter match {
-          case collector: MessageCollector => collector.messages
-          case _ => List(List(reporter.toString))
-        }
+      val messages = reporter match {
+        case collector: MessageCollector => collector.messages
+        case _ => List(List(reporter.toString))
+      }
+      if (reporter.hasErrors) {
         throw new CompilerException(messages)
+      } else {
+        messages.flatten.foreach(msg => log.warn(msg))
       }
     }
 
@@ -126,7 +128,9 @@ object Eval {
   }
 
   class EvalSettings(bootClassPath: List[String], impliedClassPath: List[String], compilerOutputDir: AbstractFile) extends Settings {
-    nowarnings.value = true // warnings are exceptions, so disable
+    nowarnings.value = false
+    deprecation.value = true
+    feature.value = false
     outputDirs.setSingleOutput(compilerOutputDir)
     bootclasspath.value = bootClassPath.mkString(File.pathSeparator)
     classpath.value = (bootClassPath ::: impliedClassPath).mkString(File.pathSeparator)

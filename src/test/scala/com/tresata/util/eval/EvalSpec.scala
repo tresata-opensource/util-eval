@@ -6,11 +6,20 @@ import scala.reflect.internal.util.Position
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.{AbstractReporter, Reporter}
 
+@deprecated("dont use this anymore")
+object test {
+  val x = 2
+}
+
 class EvalSpec extends WordSpec {
   "Evaluator" should {
 
     "apply('expression')" in {
       assert((new Eval()).apply[Int]("1 + 1") == 2)
+    }
+
+    "emit deprecation warnings" in {
+      assert((new Eval()).apply[Int]("com.tresata.util.eval.test.x + 1") == 3)
     }
 
     "allow custom error reporting" when {
