@@ -45,3 +45,4 @@ test.log
 .metadata/
 .ensime*
 *.*#
+.bsp/
