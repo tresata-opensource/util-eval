@@ -24,7 +24,7 @@ import java.io.File
 import java.net.URLClassLoader
 import scala.collection.mutable
 import scala.reflect.internal.util.{ SourceFile, BatchSourceFile, Position }
-import scala.tools.nsc.interpreter.AbstractFileClassLoader
+import scala.reflect.internal.util.AbstractFileClassLoader
 import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory }
 import scala.tools.nsc.reporters.{ Reporter, AbstractReporter }
 import scala.tools.nsc.{ Global, Settings }
@@ -62,7 +62,7 @@ object Eval {
         }
       messageBuffer += s"${severityName}${lineMessage}${message}" ::
       (if (pos.isDefined) {
-        pos.inUltimateSource(pos.source).lineContent.stripLineEnd ::
+        pos.finalPosition.lineContent.stripLineEnd ::
         (" " * (pos.column - 1) + "^") ::
         Nil
       } else {
