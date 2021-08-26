@@ -1,7 +1,7 @@
 package com.tresata.util.eval
 
 import java.io.File
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.{AbstractReporter, Reporter}
@@ -11,7 +11,7 @@ object test {
   val x = 2
 }
 
-class EvalSpec extends WordSpec {
+class EvalSpec extends AnyWordSpec {
   "Evaluator" should {
 
     "apply('expression')" in {
