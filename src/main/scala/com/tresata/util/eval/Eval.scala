@@ -23,11 +23,11 @@ import java.util.UUID
 import java.io.File
 import java.net.URLClassLoader
 import scala.collection.mutable
-import scala.reflect.internal.util.{ SourceFile, BatchSourceFile, Position }
+import scala.reflect.internal.util.{SourceFile, BatchSourceFile, Position}
 import scala.reflect.internal.util.AbstractFileClassLoader
-import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory }
-import scala.tools.nsc.reporters.{ Reporter, FilteringReporter }
-import scala.tools.nsc.{ Global, Settings }
+import scala.tools.nsc.io.{AbstractFile, VirtualDirectory}
+import scala.tools.nsc.reporters.{Reporter, FilteringReporter}
+import scala.tools.nsc.{Global, Settings}
 import org.slf4j.LoggerFactory
 
 object Eval {

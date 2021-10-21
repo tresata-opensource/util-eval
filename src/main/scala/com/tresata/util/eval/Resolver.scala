@@ -19,7 +19,7 @@
 
 package com.tresata.util.eval
 
-import java.io.{ InputStream, ByteArrayOutputStream, File, FileInputStream }
+import java.io.{InputStream, ByteArrayOutputStream, File, FileInputStream}
 
 trait Resolver {
   def resolvable(path: String): Boolean
