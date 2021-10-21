@@ -26,7 +26,7 @@ import scala.collection.mutable
 import scala.reflect.internal.util.{ SourceFile, BatchSourceFile, Position }
 import scala.reflect.internal.util.AbstractFileClassLoader
 import scala.tools.nsc.io.{ AbstractFile, VirtualDirectory }
-import scala.tools.nsc.reporters.{ Reporter, AbstractReporter }
+import scala.tools.nsc.reporters.{ Reporter, FilteringReporter }
 import scala.tools.nsc.{ Global, Settings }
 import org.slf4j.LoggerFactory
 
@@ -41,13 +41,12 @@ object Eval {
     def messages: Seq[Seq[String]]
   }
 
-  class DefaultReporter(lineOffset: Int, val settings: Settings) extends AbstractReporter with MessageCollector {
+  class DefaultReporter(lineOffset: Int, val settings: Settings) extends FilteringReporter with MessageCollector {
     private val messageBuffer = new mutable.ListBuffer[List[String]]
 
     override def messages: Seq[Seq[String]] = messageBuffer.toList
 
-    override def display(pos: Position, message: String, severity: Severity): Unit = {
-      severity.count += 1
+    override def doReport(pos: Position, message: String, severity: Severity): Unit = {
       val severityName = severity match {
         case ERROR   => "error: "
         case WARNING => "warning: "
@@ -68,10 +67,6 @@ object Eval {
       } else {
         Nil
       })
-    }
-
-    override def displayPrompt: Unit = {
-      // no
     }
   }
 
@@ -229,7 +224,7 @@ class Eval(target: Option[File] = None, preprocessors: Seq[Preprocessor] = Seq.e
     val wrapped = wrapCodeInObject(preprocessed, objectName)
     if (log.isDebugEnabled) {
       log.debug("wrapped code:")
-      wrapped.lines.zipWithIndex.foreach{ case (line, i) =>
+      wrapped.linesIterator.zipWithIndex.foreach{ case (line, i) =>
         log.debug(s"""${i.toString.padTo(5, ' ')}| ${line}""")
       }
     }

@@ -25,7 +25,7 @@ trait Preprocessor {
 
 case class IncludePreprocessor(resolvers: Seq[Resolver]) extends Preprocessor {
   def apply(code: String): String = {
-    code.lines.map{ line: String =>
+    code.linesIterator.map{ line: String =>
       line.trim.split(" +") match {
         case Array("#include", path) =>
           resolvers.find{ resolver: Resolver => resolver.resolvable(path) } match {

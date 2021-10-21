@@ -4,7 +4,7 @@ import java.io.File
 import org.scalatest.wordspec.AnyWordSpec
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.Settings
-import scala.tools.nsc.reporters.{AbstractReporter, Reporter}
+import scala.tools.nsc.reporters.{FilteringReporter, Reporter}
 
 @deprecated("dont use this anymore", "long time ago")
 object test {
@@ -27,10 +27,9 @@ class EvalSpec extends AnyWordSpec {
         val eval = new Eval() {
           @volatile var errors: Seq[(String, String)] = Nil
 
-          override lazy val reporter: Reporter = new AbstractReporter {
+          override lazy val reporter: Reporter = new FilteringReporter {
             override val settings: Settings = compilerSettings
-            override def displayPrompt(): Unit = ()
-            override def display(pos: Position, msg: String, severity: this.type#Severity): Unit = {
+            override def doReport(pos: Position, msg: String, severity: this.type#Severity): Unit = {
               errors = errors :+ ((msg, severity.toString))
             }
           }
