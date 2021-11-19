@@ -8,6 +8,7 @@ lazy val root = (project in file(".")).settings(
   libraryDependencies := Seq(
     "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile",
     "org.slf4j" % "slf4j-api" % "1.7.30" % "compile",
+    "io.github.classgraph" % "classgraph" % "4.8.133" % "compile",
     "org.scalatest" %% "scalatest-wordspec" % "3.2.10" % "test",
     "org.slf4j" % "slf4j-log4j12" % "1.7.30" % "test"
   ),

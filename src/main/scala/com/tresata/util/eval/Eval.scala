@@ -23,12 +23,14 @@ import java.util.UUID
 import java.io.File
 import java.net.URLClassLoader
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 import scala.reflect.internal.util.{SourceFile, BatchSourceFile, Position}
 import scala.reflect.internal.util.AbstractFileClassLoader
 import scala.tools.nsc.io.{AbstractFile, VirtualDirectory}
 import scala.tools.nsc.reporters.{Reporter, FilteringReporter}
 import scala.tools.nsc.{Global, Settings}
 import org.slf4j.LoggerFactory
+import io.github.classgraph.ClassGraph
 
 object Eval {
   private val log = LoggerFactory.getLogger(classOf[Eval])
@@ -169,7 +171,17 @@ class Eval(target: Option[File] = None, preprocessors: Seq[Preprocessor] = Seq.e
    * This is probably fragile.
    */
   lazy val impliedClassPath: List[String] = {
-    val icp = getClassPath(getClass.getClassLoader).flatten
+    //val icp = getClassPath(getClass.getClassLoader).flatten
+    val scanResult = new ClassGraph().scan()
+    val icp = try {
+      scanResult
+        .getClasspathFiles()
+        .asScala
+        .map(_.toString)
+        .toList
+    } finally {
+      scanResult.close()
+    }
     log.debug("implied class path {}", icp)
     icp
   }
